@@ -5,6 +5,7 @@ import string
 import io
 import base64
 import requests
+import re
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -46,7 +47,13 @@ def extract_text_from_file(file):
     if filename.endswith('.pdf'):
         reader = PdfReader(file)
         for page in reader.pages:
-            content += page.extract_text() + "\n"
+            extracted = page.extract_text()
+            if extracted:
+                content += extracted + "\n"
+        
+        # Егер PDF ішінен ешқандай мәтін шықпаса (мысалы, ол тек суреттерден тұрса)
+        if not content.strip():
+            raise ValueError("Бұл PDF файлдан мәтін табылмады (мүмкін ол сканерленген сурет). Басқа мәтіні бар құжат жүктеп көріңіз.")
             
     # 2. WORD (.docx)
     elif filename.endswith('.docx'):
@@ -62,14 +69,17 @@ def extract_text_from_file(file):
 
 def get_youtube_transcript(url):
     try:
-        if "v=" in url:
-            video_id = url.split("v=")[1].split("&")[0]
-        elif "youtu.be/" in url:
-            video_id = url.split("youtu.be/")[1].split("?")[0]
-        else:
+        # YouTube ID-ін ақылды түрде алу (кез келген сілтеме форматына жарайды)
+        video_id = None
+        match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11}).*", url)
+        if match:
+            video_id = match.group(1)
+        
+        if not video_id:
             return None
         
-        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['kz', 'ru', 'en'])
+        # Автоматты түрде Қазақ, Орыс немесе Ағылшын субтитрлерін іздейді
+        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['kk', 'ru', 'en'])
         text = " ".join([t['text'] for t in transcript])
         return text[:15000]
     except Exception as e:
@@ -105,6 +115,7 @@ def generate_quiz():
         language = request.form.get('language', 'Kazakh')
         quiz_type = request.form.get('type', 'Multiple Choice')
         input_type = request.form.get('free_input_type', 'text')
+        mode = request.form.get('mode', 'live')  # Өткізу режимі (Live немесе Homework)
         
         context_text = ""
         image_data = None 
@@ -123,6 +134,7 @@ def generate_quiz():
                     image_data = base64.b64encode(file.read()).decode('utf-8')
                     context_text = "Analyze this image and create a quiz based on it."
                 else:
+                    # Егер PDF бос болса, қате осы жерден ұсталады
                     context_text = extract_text_from_file(file)
 
         elif input_type == 'url':
@@ -141,7 +153,7 @@ def generate_quiz():
                 if transcript:
                     context_text = f"Video Transcript: {transcript}"
                 else:
-                    return jsonify({"error": "Видеодан субтитр алынбады"}), 400
+                    return jsonify({"error": "Видеодан субтитр алынбады немесе бұл видеода мәтін жоқ."}), 400
         
         if not context_text:
             context_text = topic
@@ -154,7 +166,6 @@ def generate_quiz():
 
         otp = ''.join(random.choices(string.digits, k=4))
 
-        # --- ОСЫ ЖЕР ӨЗГЕРТІЛДІ (Қатаң түрде 4 нұсқа талап етілді) ---
         system_instruction = f"""
         You are a Quiz Generator. 
         Create {q_count} questions based on the provided content/topic.
@@ -186,12 +197,15 @@ def generate_quiz():
 
         quiz_json = json.loads(response.choices[0].message.content)
 
-        # ТУТ қосылды: 'scores': {} сөздігі оқушылардың ұпайларын сақтау үшін
+        # Homework болса, статус бірден "started" болады (Оқушылар мұғалімді күтпейді)
+        room_status = "started" if mode == "homework" else "waiting"
+
         TEST_STORAGE[otp] = {
             "id": otp,
             "data": quiz_json,
             "config": {"timer": timer_val, "topic": topic[:50]},
-            "status": "waiting",
+            "status": room_status,
+            "mode": mode,
             "players": [],
             "scores": {} 
         }
@@ -213,7 +227,9 @@ def qrcode_filter(data):
 def room(otp):
     test = TEST_STORAGE.get(otp)
     if not test: return "Not Found"
-    return render_template('quiz_room.html', test=test, otp=otp, join_url=request.host_url+"join/"+otp)
+    # Режимді HTML-ге береміз, оған қарап мұғалім бөлмесі бейімделеді
+    mode = test.get('mode', 'live')
+    return render_template('quiz_room.html', test=test, otp=otp, join_url=request.host_url+"join/"+otp, mode=mode)
 
 @app.route('/get_players/<otp>')
 def get_players(otp):
@@ -263,7 +279,6 @@ def submit_test(otp):
     for i, q in enumerate(questions):
         if request.form.get(f'q{i}') == q['answer']: score += 1
         
-    # БАГ 2 ТҮЗЕТІЛДІ: Оқушының ұпайын сақтаймыз
     test['scores'][nick] = score
         
     return render_template('student_result.html', score=score, total=len(questions), student_name=nick)
