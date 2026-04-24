@@ -6,6 +6,7 @@ import io
 import base64
 import requests
 import re
+import urllib.request
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -21,6 +22,8 @@ try:
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.pagesizes import letter
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
 except ImportError:
     print("⚠️ Кейбір кітапханалар жоқ. Console-да орнатыңыз (pip install qrcode python-docx PyPDF2 youtube-transcript-api bs4 reportlab).")
 
@@ -69,7 +72,7 @@ def extract_text_from_file(file):
 
 def get_youtube_transcript(url):
     try:
-        # YouTube ID-ін ақылды түрде алу (кез келген сілтеме форматына жарайды)
+        # YouTube ID-ін ақылды түрде алу
         video_id = None
         match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11}).*", url)
         if match:
@@ -78,8 +81,14 @@ def get_youtube_transcript(url):
         if not video_id:
             return None
         
-        # Автоматты түрде Қазақ, Орыс немесе Ағылшын субтитрлерін іздейді
-        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['kk', 'ru', 'en'])
+        try:
+            # 1-қадам: Негізгі тілдерді іздейміз
+            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['kk', 'ru', 'en'])
+        except:
+            # 2-қадам (План Б): Егер олар жоқ болса, бар субтитрлердің ең біріншісін күштеп аламыз
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            transcript = list(transcript_list)[0].fetch()
+
         text = " ".join([t['text'] for t in transcript])
         return text[:15000]
     except Exception as e:
@@ -134,7 +143,6 @@ def generate_quiz():
                     image_data = base64.b64encode(file.read()).decode('utf-8')
                     context_text = "Analyze this image and create a quiz based on it."
                 else:
-                    # Егер PDF бос болса, қате осы жерден ұсталады
                     context_text = extract_text_from_file(file)
 
         elif input_type == 'url':
@@ -197,7 +205,7 @@ def generate_quiz():
 
         quiz_json = json.loads(response.choices[0].message.content)
 
-        # Homework болса, статус бірден "started" болады (Оқушылар мұғалімді күтпейді)
+        # Homework болса, статус бірден "started" болады
         room_status = "started" if mode == "homework" else "waiting"
 
         TEST_STORAGE[otp] = {
@@ -316,10 +324,29 @@ def download_file(otp, fmt):
         
     # 2. PDF ФАЙЛЫН ЖҮКТЕУ (PDF)
     elif fmt == 'pdf':
+        
+        # PDF Қаріптерін (Кириллица) автоматты жүктеу
+        font_path = os.path.join(basedir, "DejaVuSans.ttf")
+        if not os.path.exists(font_path):
+            try:
+                urllib.request.urlretrieve("https://raw.githubusercontent.com/dejavu-fonts/dejavu-fonts/master/ttf/DejaVuSans.ttf", font_path)
+            except Exception as e:
+                print("Font download error:", e)
+
         file_stream = io.BytesIO()
         styles = getSampleStyleSheet()
-        style_n = styles['Normal']
-        style_h = styles['Heading1']
+        
+        # Қаріпті PDF-ке орнату
+        try:
+            pdfmetrics.registerFont(TTFont('DejaVu', font_path))
+            style_n = styles['Normal']
+            style_h = styles['Heading1']
+            style_n.fontName = 'DejaVu'
+            style_h.fontName = 'DejaVu'
+        except Exception as e:
+            print("Could not register font:", e)
+            style_n = styles['Normal']
+            style_h = styles['Heading1']
         
         story = []
         story.append(Paragraph(title, style_h))
