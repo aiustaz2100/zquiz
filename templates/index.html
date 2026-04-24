@@ -79,7 +79,6 @@
 
         .subjects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
 
-        /* ЖАҢАРТЫЛДЫ: Пән карточкаларының дизайны және анимациясы */
         .subject-card {
             background: #f8f9fa; border-radius: 15px; padding: 15px; text-align: center; cursor: pointer;
             display: flex; flex-direction: column; align-items: center; justify-content: center; height: 110px;
@@ -108,7 +107,6 @@
         .nav-pills .nav-link { color: #6c757d; font-weight: 800; border-radius: 12px; padding: 12px 15px; margin: 2px; background: #f1f3f5; font-size: 14px; transition: all 0.3s ease; }
         .nav-pills .nav-link.active { background-color: var(--primary-color); color: white; }
 
-        /* ЖАҢАРТЫЛДЫ: Генерациялау батырмасына Hover эффектісі */
         .btn-generate {
             background: var(--btn-gradient); border: none; border-radius: 15px; padding: 18px;
             font-size: 20px; font-weight: 900; color: white; width: 100%; margin-top: 20px;
@@ -211,7 +209,7 @@
 
                 <div class="tab-pane fade" id="content-free">
                     <div class="kwizai-box">
-                        <textarea id="topic_free" class="kwizai-textarea" id="ph-free" placeholder="Тест не туралы? (Тақырыпты жазыңыз немесе файл жүктеңіз)..."></textarea>
+                        <textarea id="topic_free" class="kwizai-textarea" placeholder="Тест не туралы? (Тақырыпты жазыңыз немесе файл жүктеңіз)..."></textarea>
 
                         <div class="d-flex align-items-center mt-3 flex-wrap gap-2">
                             <button type="button" class="attach-btn" onclick="triggerFile()"><i class="fas fa-paperclip"></i> Файл</button>
@@ -236,12 +234,12 @@
 
                 <div class="tab-pane fade" id="content-sat">
                     <div class="alert alert-info py-3 mb-4 fw-bold" style="border-radius: 15px; background-color: rgba(var(--primary-color-rgb), 0.1); border-color: var(--primary-color); color: var(--primary-color);"><i class="fas fa-globe-americas me-2"></i> <span class="txt-sat-info">Халықаралық SAT стандарты (Math & English)</span></div>
-                    <div class="kwizai-box"><label class="small text-muted mb-2 fw-bold txt-sat-label">SAT Тақырыбы:</label><textarea id="topic_sat" class="kwizai-textarea" id="ph-sat" rows="3" placeholder="Мысалы: Math - Algebra..."></textarea></div>
+                    <div class="kwizai-box"><label class="small text-muted mb-2 fw-bold txt-sat-label">SAT Тақырыбы:</label><textarea id="topic_sat" class="kwizai-textarea" rows="3" placeholder="Мысалы: Math - Algebra..."></textarea></div>
                 </div>
 
                 <div class="tab-pane fade" id="content-pisa">
                     <div class="alert alert-success py-3 mb-4 fw-bold" style="border-radius: 15px; background-color: #d1e7dd; border-color: #0f5132; color: #0f5132;"><i class="fas fa-chart-line me-2"></i> <span class="txt-pisa-info">PISA: Функционалдық сауаттылық және сыни ойлау</span></div>
-                    <div class="kwizai-box"><label class="small text-muted mb-2 fw-bold txt-pisa-label">PISA Тақырыбы:</label><textarea id="topic_pisa" class="kwizai-textarea" id="ph-pisa" rows="3" placeholder="Мысалы: Жаһандық жылыну мәселесі..."></textarea></div>
+                    <div class="kwizai-box"><label class="small text-muted mb-2 fw-bold txt-pisa-label">PISA Тақырыбы:</label><textarea id="topic_pisa" class="kwizai-textarea" rows="3" placeholder="Мысалы: Жаһандық жылыну мәселесі..."></textarea></div>
                 </div>
             </div>
 
