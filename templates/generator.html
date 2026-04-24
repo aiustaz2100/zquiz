@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="kz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZQuiz - AI Platform</title>
+
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+    
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='logo.png') }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ZQuiz AI">
+
+    <link rel="icon" sizes="192x192" href="{{ url_for('static', filename='logo.png') }}">
+    <meta name="theme-color" content="#764ba2">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --primary-color: #764ba2;
+            --btn-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-bg: #ffffff;
+            --primary-color-rgb: 118, 75, 162; /* Әдепкі түс көлеңкесі үшін */
+        }
+
+        body { 
+            font-family: 'Nunito', sans-serif; 
+            background: var(--bg-gradient); 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 15px; 
+            transition: background 0.5s ease; 
+        }
+        
+        /* Түс таңдау панелі */
+        .theme-switch-container { 
+            display: flex; 
+            gap: 8px; 
+            margin-bottom: 20px; 
+            padding: 8px; 
+            background: rgba(255, 255, 255, 0.2); 
+            backdrop-filter: blur(10px); 
+            border-radius: 15px; 
+            flex-wrap: wrap; 
+            justify-content: center;
+        }
+        .theme-box { width: 30px; height: 30px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.3s ease; }
+        .theme-box:hover { transform: scale(1.1); }
+        .theme-box.active { border-color: white; transform: scale(1.15); }
+        
+        /* Түстер */
+        .t-purple { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .t-orange { background: linear-gradient(135deg, #ff9a44, #fc6076); }
+        .t-green { background: linear-gradient(135deg, #0ba360, #3cba92); }
+        .t-blue { background: linear-gradient(135deg, #00c6ff, #0072ff); }
+        .t-red { background: linear-gradient(135deg, #ff416c, #ff4b2b); }
+        .t-teal { background: linear-gradient(135deg, #11998e, #38ef7d); }
+        .t-dark { background: linear-gradient(135deg, #232526, #414345); }
+        .t-pink { background: linear-gradient(135deg, #ff758c, #ff7eb3); }
+
+        .main-card { 
+            background: var(--card-bg); 
+            border-radius: 25px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2); 
+            width: 100%; 
+            max-width: 950px; 
+            padding: 30px 20px; 
+        }
+
+        .app-header { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            margin-bottom: 30px; 
+            text-align: center; 
+            position: relative;
+        }
+
+        .header-top-row {
+            display: flex;
+            width: 100%;
+            justify-content: center; 
+            align-items: flex-start;
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .lang-switcher-container { position: absolute; right: 0; top: 0; }
+
+        /* МОБИЛЬДІ ҚҰРЫЛҒЫЛАРҒА БЕЙІМДЕУ */
+        @media (max-width: 500px) {
+            .app-header {
+                margin-bottom: 15px;
+            }
+            .header-top-row { 
+                flex-direction: row !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                margin-bottom: 10px;
+                gap: 0;
+            } 
+            .logo-img { 
+                height: 50px !important;
+                width: auto;
+                margin: 0;
+            }
+            .logo-text {
+                display: none !important; 
+            }
+            .lang-switcher-container { 
+                position: static !important;
+                margin: 0 !important;
+                transform: scale(0.9);
+            }
+            
+            .logo-title-wrapper {
+                margin: 0;
+                flex-grow: 0;
+            }
+            #headerTagline {
+                font-size: 0.95rem !important;
+                line-height: 1.3;
+                padding: 0 10px;
+            }
+        }
+
+        .logo-title-wrapper { display: flex; align-items: center; justify-content: center; text-decoration: none; transition: transform 0.2s; }
+        .logo-title-wrapper:hover { transform: scale(1.02); }
+        .logo-img { height: 80px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        .logo-text { font-size: 42px; font-weight: 900; color: var(--primary-color); margin-left: 15px; letter-spacing: -1px; transition: color 0.5s ease; }
+
+        .form-control, .form-select { 
+            border-radius: 12px; 
+            padding: 12px; 
+            background-color: #f8f9fa; 
+            font-weight: 600; 
+            border: 2px solid var(--primary-color); 
+            transition: border-color 0.5s ease, box-shadow 0.3s ease;
+        }
+        .form-control:focus, .form-select:focus { 
+            background: white; 
+            box-shadow: 0 0 0 0.25rem rgba(var(--primary-color-rgb), 0.25);
+        }
+
+        .subjects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        
+        .subject-card { 
+            background: #f8f9fa; 
+            border-radius: 15px; 
+            padding: 15px; 
+            text-align: center; 
+            cursor: pointer; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 110px; 
+            border: 2px solid var(--primary-color); 
+            transition: all 0.3s ease; 
+        }
+        .subject-card i { font-size: 30px; margin-bottom: 8px; color: #6c757d; transition: color 0.3s; }
+        .subject-card span { font-size: 13px; font-weight: 700; color: #495057; line-height: 1.2; }
+        
+        .subject-card.selected { 
+            background-color: rgba(var(--primary-color-rgb), 0.1); 
+            transform: translateY(-3px); 
+            box-shadow: 0 5px 15px rgba(var(--primary-color-rgb), 0.2);
+        }
+        .subject-card.selected i, .subject-card.selected span { color: var(--primary-color); }
+        
+        /* ЖАҢАРТЫЛДЫ: Пән карточкаларына Hover эффектісі */
+        .subject-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 10px 20px rgba(var(--primary-color-rgb), 0.15);
+            border-color: var(--primary-color);
+        }
+
+        .kwizai-box {
+            background: #f8f9fa;
+            border-radius: 18px;
+            padding: 25px;
+            border: 2px solid var(--primary-color);
+            transition: border-color 0.5s ease;
+        }
+        .kwizai-box:focus-within { background: #fff; box-shadow: 0 5px 15px rgba(var(--primary-color-rgb), 0.15); }
+        .kwizai-textarea { width: 100%; border: none; background: transparent; font-size: 18px; outline: none; resize: vertical; min-height: 120px; font-weight: 600; color: #212529; }
+
+        .mode-wrapper {
+            background: #f8f9fa;
+            border-radius: 18px;
+            padding: 20px;
+            border: 2px solid var(--primary-color);
+            transition: border-color 0.5s ease;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .nav-pills .nav-link { color: #6c757d; font-weight: 800; border-radius: 12px; padding: 12px 15px; margin: 2px; background: #f1f3f5; font-size: 14px; }
+        .nav-pills .nav-link.active { background-color: var(--primary-color); color: white; }
+
+        /* ЖАҢАРТЫЛДЫ: Генерациялау батырмасына Hover эффектісі */
+        .btn-generate { 
+            background: var(--btn-gradient); 
+            border: none; 
+            border-radius: 15px; 
+            padding: 18px; 
+            font-size: 20px; 
+            font-weight: 900; 
+            color: white; 
+            width: 100%; 
+            margin-top: 20px; 
+            transition: all 0.3s ease; 
+        }
+        .btn-generate:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(var(--primary-color-rgb), 0.4);
+            filter: brightness(1.1);
+        }
+        
+        .mode-container { display: flex; flex-direction: column; gap: 10px; }
+        @media (min-width: 768px) { .mode-container { flex-direction: row; gap: 30px; } }
+
+        .attach-btn { border: none; background: #e9ecef; color: #495057; padding: 10px 20px; border-radius: 25px; font-size: 14px; font-weight: 700; margin-right: 8px; transition: 0.2s; cursor: pointer; }
+        .attach-btn:hover { background: #dee2e6; color: var(--primary-color); }
+        .hidden-input { display: none; }
+
+        .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; }
+    </style>
+</head>
+<body>
+
+    <div class="loading-overlay" id="loadingScreen">
+        <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem; color: var(--primary-color) !important;"></div>
+        <h4 class="fw-bold text-dark">AI Quiz Generating...</h4>
+        <p class="text-muted">Analyzing content & creating questions</p>
+    </div>
+
+    <div class="theme-switch-container">
+        <div class="theme-box t-purple active" onclick="setTheme('purple', this)"></div>
+        <div class="theme-box t-orange" onclick="setTheme('orange', this)"></div>
+        <div class="theme-box t-green" onclick="setTheme('green', this)"></div>
+        <div class="theme-box t-blue" onclick="setTheme('blue', this)"></div>
+        <div class="theme-box t-red" onclick="setTheme('red', this)"></div>
+        <div class="theme-box t-teal" onclick="setTheme('teal', this)"></div>
+        <div class="theme-box t-dark" onclick="setTheme('dark', this)"></div>
+        <div class="theme-box t-pink" onclick="setTheme('pink', this)"></div>
+    </div>
+
+    <div class="main-card">
+        <div class="app-header">
+            <div class="header-top-row">
+                <div class="lang-switcher-container">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <input type="radio" class="btn-check" name="lang_option" id="lang_kz" checked onclick="setLang('kz')">
+                        <label class="btn btn-outline-secondary fw-bold" for="lang_kz">🇰🇿</label>
+                        <input type="radio" class="btn-check" name="lang_option" id="lang_ru" onclick="setLang('ru')">
+                        <label class="btn btn-outline-secondary fw-bold" for="lang_ru">🇷🇺</label>
+                        <input type="radio" class="btn-check" name="lang_option" id="lang_en" onclick="setLang('en')">
+                        <label class="btn btn-outline-secondary fw-bold" for="lang_en">🇬🇧</label>
+                    </div>
+                </div>
+                <a href="/" class="logo-title-wrapper">
+                    <img src="{{ url_for('static', filename='logo.png') }}" class="logo-img" alt="ZQuiz Logo">
+                    <div class="logo-text">ZQuiz AI</div>
+                </a>
+            </div>
+            <p class="text-muted fw-bold mb-0 text-center" id="headerTagline" style="font-size: 1.1rem; line-height: 1.4;">Жасанды интеллект жаңа білімге жол</p>
+        </div>
+
+        <form action="/" method="POST" enctype="multipart/form-data" onsubmit="showLoading()">
+            
+            <ul class="nav nav-pills nav-fill mb-4 justify-content-center" id="mainTab" role="tablist">
+                <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#content-school" type="button" onclick="setActiveTab('school')"><i class="fas fa-graduation-cap"></i> <span class="txt-tab-bilim">Bilim Quiz</span></button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#content-free" type="button" onclick="setActiveTab('free')"><i class="fas fa-layer-group"></i> <span class="txt-tab-quiz">Quiz</span></button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#content-sat" type="button" onclick="setActiveTab('sat')"><i class="fas fa-globe-americas"></i> <span class="txt-tab-sat">SAT</span></button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#content-pisa" type="button" onclick="setActiveTab('pisa')"><i class="fas fa-chart-line"></i> <span class="txt-tab-pisa">PISA</span></button></li>
+            </ul>
+
+            <input type="hidden" name="active_tab" id="activeTabInput" value="school">
+
+            <div class="tab-content" id="mainTabContent">
+                
+                <div class="tab-pane fade show active" id="content-school">
+                    <label class="form-label txt-subject">Пән</label>
+                    <input type="hidden" name="subject" id="selectedSubject" value="Математика">
+                    <div class="subjects-grid">
+                        <div class="subject-card selected" onclick="selectSubject(this, 'Математика')"><i class="fas fa-calculator"></i><span>Математика</span></div>
+                        <div class="subject-card" onclick="selectSubject(this, 'Қазақ тілі')"><i class="fas fa-book"></i><span>Қазақ тілі</span></div>
+                        <div class="subject-card" onclick="selectSubject(this, 'Қазақ әдебиеті')"><i class="fas fa-feather-alt"></i><span>Әдебиет</span></div>
+                        <div class="subject-card" onclick="selectSubject(this, 'Орыс тілі')"><i class="fas fa-language"></i><span>Орыс тілі</span></div>
+                        <div class="subject-card" onclick="selectSubject(this, 'Ағылшын тілі')"><i class="fas fa-globe"></i><span>English</span></div>
+                        <div class="subject-card" onclick="selectSubject(this, 'Тарих')"><i class="fas fa-landmark"></i><span>Тарих</span></div>
+                        <div class="subject-card" onclick="selectSubject(this, 'Физика')"><i class="fas fa-atom"></i><span>Физика</span></div>
+                        <div class="subject-card" onclick="selectSubject(this, 'Химия')"><i class="fas fa-flask"></i><span>Химия</span></div>
+                        <div class="subject-card" onclick="selectSubject(this, 'Биология')"><i class="fas fa-dna"></i><span>Биология</span></div>
+                        <div class="subject-card" onclick="selectSubject(this, 'География')"><i class="fas fa-map-marked-alt"></i><span>География</span></div>
+                        <div class="subject-card" onclick="selectSubject(this, 'Информатика')"><i class="fas fa-laptop-code"></i><span>Информатика</span></div>
+                        <div class="subject-card" onclick="selectSubject(this, 'Құқық')"><i class="fas fa-balance-scale"></i><span>Құқық</span></div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label txt-topic">Тақырып</label>
+                        <textarea name="topic" class="form-control" rows="2" placeholder="Мысалы: Ньютон заңдары"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3"><label class="form-label txt-grade">Сынып</label><select name="grade" class="form-select"><option>5-сынып</option><option>6-сынып</option><option>7-сынып</option><option>8-сынып</option><option>9-сынып</option><option>10-сынып</option><option>11-сынып</option></select></div>
+                        <div class="col-6 mb-3"><label class="form-label txt-level">Қиындық</label><select name="level" class="form-select"><option>Оңай</option><option selected>Орташа</option><option>Қиын</option></select></div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="content-free">
+                    <div class="kwizai-box">
+                        <textarea name="free_text_input" class="kwizai-textarea" id="ph-free" placeholder="Тест не туралы? (Тақырыпты жазыңыз немесе файл жүктеңіз)..."></textarea>
+                        <div class="d-flex align-items-center mt-3 flex-wrap gap-2">
+                            <button type="button" class="attach-btn" onclick="triggerFile()"><i class="fas fa-paperclip"></i> Файл</button>
+                            <button type="button" class="attach-btn" onclick="toggleInput('url')"><i class="fas fa-link"></i> URL</button>
+                            <button type="button" class="attach-btn" onclick="toggleInput('youtube')"><i class="fab fa-youtube"></i> YouTube</button>
+                        </div>
+                        <div id="file-area" class="mt-3 text-primary small fw-bold" style="display:none;"><i class="fas fa-file"></i> <span id="file-name"></span><input type="file" name="file_upload" id="real-file" class="hidden-input" onchange="showFileName()"></div>
+                        <div id="url-area" class="mt-3" style="display:none;"><input type="url" name="url_link" class="form-control" placeholder="https://site.com..."></div>
+                        <div id="youtube-area" class="mt-3" style="display:none;"><input type="url" name="youtube_link" class="form-control" placeholder="https://youtube.com/watch?v=..."></div>
+                        <input type="hidden" name="free_input_type" id="freeInputType" value="text">
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="content-sat">
+                    <div class="alert alert-info py-3 mb-4 fw-bold" style="border-radius: 15px; background-color: rgba(var(--primary-color-rgb), 0.1); border-color: var(--primary-color); color: var(--primary-color);"><i class="fas fa-globe-americas me-2"></i> <span class="txt-sat-info">Халықаралық SAT стандарты (Math & English)</span></div>
+                    <div class="kwizai-box"><label class="small text-muted mb-2 fw-bold txt-sat-label">SAT Тақырыбы:</label><textarea name="sat_topic" class="kwizai-textarea" id="ph-sat" rows="3" placeholder="Мысалы: Math - Algebra..."></textarea></div>
+                </div>
+
+                <div class="tab-pane fade" id="content-pisa">
+                    <div class="alert alert-success py-3 mb-4 fw-bold" style="border-radius: 15px; background-color: #d1e7dd; border-color: #0f5132; color: #0f5132;"><i class="fas fa-chart-line me-2"></i> <span class="txt-pisa-info">PISA: Функционалдық сауаттылық және сыни ойлау</span></div>
+                    <div class="kwizai-box"><label class="small text-muted mb-2 fw-bold txt-pisa-label">PISA Тақырыбы:</label><textarea name="pisa_topic" class="kwizai-textarea" id="ph-pisa" rows="3" placeholder="Мысалы: Жаһандық жылыну мәселесі..."></textarea></div>
+                </div>
+            </div>
+
+            <div class="row mt-5">
+                <div class="col-md-4 mb-3"><label class="form-label txt-lang">Тіл</label><select name="language" class="form-select"><option value="kz">🇰🇿 Қазақша</option><option value="ru">🇷🇺 Русский</option><option value="en">🇬🇧 English</option></select></div>
+                <div class="col-md-4 mb-3"><label class="form-label txt-count">Сұрақ саны</label><select name="count" class="form-select"><option value="auto">✨ Автоматты (3-30)</option><option value="5">5 сұрақ</option><option value="10" selected>10 сұрақ</option><option value="15">15 сұрақ</option><option value="20">20 сұрақ</option><option value="25">25 сұрақ</option><option value="30">30 сұрақ</option></select></div>
+                <div class="col-md-4 mb-3"><label class="form-label txt-timer">Таймер</label><select name="timer" class="form-select"><option value="no">❌ Таймерсіз</option><option value="yes">⏱️ Таймермен (1 мин/сұрақ)</option></select></div>
+            </div>
+
+            <div class="mode-wrapper">
+                <label class="fw-bold d-block mb-3 txt-mode" style="font-size: 1.1rem;">Өткізу режимі</label>
+                <div class="mode-container">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="mode" value="live" checked id="m1" style="transform: scale(1.2);">
+                        <label class="form-check-label fw-bold ms-2" for="m1" id="lbl-live">Live (Мұғаліммен)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="mode" value="homework" id="m2" style="transform: scale(1.2);">
+                        <label class="form-check-label fw-bold ms-2" for="m2" id="lbl-hw">Homework (Үй тапсырмасы)</label>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-generate"><i class="fas fa-magic me-2"></i> <span class="txt-btn">ТЕСТ ЖАСАУ</span></button>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function setActiveTab(tab) { document.getElementById('activeTabInput').value = tab; }
+        function showLoading() { document.getElementById('loadingScreen').style.display = 'flex'; }
+        function triggerFile() { document.getElementById('real-file').click(); document.getElementById('freeInputType').value = 'file'; hideOthers('file'); }
+        function showFileName() { var name = document.getElementById('real-file').files[0].name; document.getElementById('file-name').innerText = name; document.getElementById('file-area').style.display = 'block'; }
+        function toggleInput(type) { document.getElementById('freeInputType').value = type; hideOthers(type); document.getElementById(type + '-area').style.display = 'block'; }
+        function hideOthers(active) { ['file', 'url', 'youtube'].forEach(t => { if (t !== active) document.getElementById(t + '-area').style.display = 'none'; }); }
+        function selectSubject(element, value) {
+            document.querySelectorAll('.subject-card').forEach(card => card.classList.remove('selected'));
+            element.classList.add('selected');
+            document.getElementById('selectedSubject').value = value;
+        }
+
+        const themes = {
+            purple: { bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', primary: '#764ba2', btn: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+            orange: { bg: 'linear-gradient(135deg, #FF9A44 0%, #FC6076 100%)', primary: '#FC6076', btn: 'linear-gradient(135deg, #FF9A44 0%, #FC6076 100%)' },
+            green:  { bg: 'linear-gradient(135deg, #0BA360 0%, #3CBA92 100%)', primary: '#0BA360', btn: 'linear-gradient(135deg, #0BA360 0%, #3CBA92 100%)' },
+            blue:   { bg: 'linear-gradient(135deg, #00C6FF 0%, #0072FF 100%)', primary: '#0072FF', btn: 'linear-gradient(135deg, #00C6FF 0%, #0072FF 100%)' },
+            red:    { bg: 'linear-gradient(135deg, #FF416C 0%, #FF4B2B 100%)', primary: '#FF4B2B', btn: 'linear-gradient(135deg, #FF416C 0%, #FF4B2B 100%)' },
+            teal:   { bg: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', primary: '#11998e', btn: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)' },
+            dark:   { bg: 'linear-gradient(135deg, #232526 0%, #414345 100%)', primary: '#414345', btn: 'linear-gradient(135deg, #232526 0%, #414345 100%)' },
+            pink:   { bg: 'linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%)', primary: '#ff758c', btn: 'linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%)' }
+        };
+
+        function setTheme(themeName, element) {
+            const theme = themes[themeName];
+            const root = document.documentElement;
+            root.style.setProperty('--bg-gradient', theme.bg);
+            root.style.setProperty('--primary-color', theme.primary);
+            root.style.setProperty('--btn-gradient', theme.btn);
+            let rgb = hexToRgb(theme.primary);
+            if(rgb) root.style.setProperty('--primary-color-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+            document.querySelectorAll('.theme-box').forEach(box => box.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        function hexToRgb(hex) {
+            var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
+        }
+
+        const trans = {
+            kz: { 
+                header: "Жасанды интеллект жаңа білімге жол",
+                tabBilim: "Bilim Quiz", tabQuiz: "Quiz", tabSat: "SAT", tabPisa: "PISA",
+                subject: "Пән", topic: "Тақырып", grade: "Сынып", level: "Қиындық", 
+                satInfo: "Халықаралық SAT стандарты (Math & English)",
+                satLabel: "SAT Тақырыбы:",
+                pisaInfo: "PISA: Функционалдық сауаттылық және сыни ойлау",
+                pisaLabel: "PISA Тақырыбы немесе Мәтіні:",
+                lang: "Тіл", count: "Сұрақ саны", timer: "Таймер", mode: "Өткізу режимі", btn: "ТЕСТ ЖАСАУ",
+                phFree: "Тест не туралы? (Тақырыпты жазыңыз немесе файл жүктеңіз)...",
+                phSat: "Мысалы: Math - Algebra...",
+                phPisa: "Мысалы: Жаһандық жылыну мәселесі...",
+                live: "Live (Мұғаліммен)", hw: "Homework (Үй тапсырмасы)"
+            },
+            ru: { 
+                header: "Искусственный интеллект — путь к новым знаниям",
+                tabBilim: "Bilim Quiz", tabQuiz: "Quiz", tabSat: "SAT", tabPisa: "PISA",
+                subject: "Предмет", topic: "Тема", grade: "Класс", level: "Сложность", 
+                satInfo: "Международный стандарт SAT (Math & English)",
+                satLabel: "Тема SAT:",
+                pisaInfo: "PISA: Функциональная грамотность и критическое мышление",
+                pisaLabel: "Тема или Текст для PISA:",
+                lang: "Язык", count: "Кол-во вопросов", timer: "Таймер", mode: "Режим проведения", btn: "СОЗДАТЬ ТЕСТ",
+                phFree: "О чем тест? (Напишите тему или загрузите файл)...",
+                phSat: "Например: Math - Algebra...",
+                phPisa: "Например: Проблема глобального потепления...",
+                live: "Live (С учителем)", hw: "Homework (Домашнее задание)"
+            },
+            en: { 
+                header: "Artificial Intelligence is the way to new knowledge",
+                tabBilim: "Bilim Quiz", tabQuiz: "Quiz", tabSat: "SAT", tabPisa: "PISA",
+                subject: "Subject", topic: "Topic", grade: "Grade", level: "Difficulty", 
+                satInfo: "International SAT Standard (Math & English)",
+                satLabel: "SAT Topic:",
+                pisaInfo: "PISA: Functional Literacy & Critical Thinking",
+                pisaLabel: "PISA Topic or Context:",
+                lang: "Language", count: "Question Count", timer: "Timer", mode: "Quiz Mode", btn: "GENERATE QUIZ",
+                phFree: "What is the quiz about? (Type topic or upload file)...",
+                phSat: "Example: Math - Algebra...",
+                phPisa: "Example: Global Warming Issue...",
+                live: "Live (Teacher-led)", hw: "Homework (Self-paced)"
+            }
+        };
+
+        function setLang(l) {
+            const t = trans[l];
+            document.getElementById('headerTagline').innerText = t.header;
+            document.querySelector('.txt-tab-bilim').innerText = t.tabBilim;
+            document.querySelector('.txt-tab-quiz').innerText = t.tabQuiz;
+            document.querySelector('.txt-tab-sat').innerText = t.tabSat;
+            document.querySelector('.txt-tab-pisa').innerText = t.tabPisa;
+            
+            document.querySelector('.txt-subject').innerText = t.subject;
+            document.querySelector('.txt-topic').innerText = t.topic;
+            document.querySelector('.txt-grade').innerText = t.grade;
+            document.querySelector('.txt-level').innerText = t.level;
+            
+            document.querySelector('.txt-sat-info').innerText = t.satInfo;
+            document.querySelector('.txt-sat-label').innerText = t.satLabel;
+            
+            document.querySelector('.txt-pisa-info').innerText = t.pisaInfo;
+            document.querySelector('.txt-pisa-label').innerText = t.pisaLabel;
+
+            document.querySelector('.txt-lang').innerText = t.lang;
+            document.querySelector('.txt-count').innerText = t.count;
+            document.querySelector('.txt-timer').innerText = t.timer;
+            document.querySelector('.txt-mode').innerText = t.mode;
+            document.querySelector('.txt-btn').innerText = t.btn;
+            
+            document.getElementById('ph-free').placeholder = t.phFree;
+            document.getElementById('ph-sat').placeholder = t.phSat;
+            document.getElementById('ph-pisa').placeholder = t.phPisa;
+
+            document.getElementById('lbl-live').innerText = t.live;
+            document.getElementById('lbl-hw').innerText = t.hw;
+        }
+
+        setTheme('purple', document.querySelector('.t-purple'));
+    </script>
+</body>
+</html>

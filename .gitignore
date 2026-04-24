@@ -1,0 +1,7 @@
+.env
+zquiz_database.db
+__pycache__/.env
+.virtualenvs/
+.cache/
+.local/
+mysite/

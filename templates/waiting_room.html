@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="kz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Күту залы</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            font-family: 'Nunito', sans-serif;
+        }
+        .wait-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            padding: 40px;
+            border-radius: 25px;
+            border: 1px solid rgba(255,255,255,0.3);
+            max-width: 90%;
+            width: 450px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+        .spinner-grow { width: 4rem; height: 4rem; }
+        .pulse-text { animation: pulse 2s infinite; }
+        
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="wait-card">
+        <h1 class="mb-2 fw-bold">👋 Сәлем, {{ nickname }}!</h1>
+        <p class="mb-4 text-light opacity-75">Сіз ойынға қосылдыңыз</p>
+        
+        <div class="my-5">
+            <div class="spinner-grow text-warning mb-3" role="status"></div>
+            <h4 class="pulse-text fw-bold">Мұғалімнің бастауын күтіңіз...</h4>
+        </div>
+        
+        <div class="alert alert-light text-dark d-inline-block px-4 py-2 rounded-pill fw-bold">
+            <i class="fas fa-key me-2"></i> Код: {{ otp }}
+        </div>
+        
+        <p class="opacity-75 small mt-4">Тест басталғанда экран автоматты түрде ашылады.</p>
+    </div>
+
+    <script>
+        // Бұл скрипт әр 3 секунд сайын серверді тексереді
+        setInterval(function() {
+            // Біздің app.py-дағы /get_players/<otp> маршруты статусты да қайтарады
+            fetch('/get_players/{{ otp }}')
+                .then(response => {
+                    if (response.ok) return response.json();
+                    throw new Error("Network error");
+                })
+                .then(data => {
+                    // Егер мұғалім "Бастау" батырмасын басса (status: started)
+                    if (data.status === 'started') {
+                        // Бетті жаңартамыз -> Сервер автоматты түрде student_test.html ашады
+                        window.location.reload(); 
+                    }
+                })
+                .catch(error => console.log("Күтуде...", error));
+        }, 3000); // 3 секунд сайын
+    </script>
+</body>
+</html>

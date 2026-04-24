@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="kz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Нәтиже: {{ student_name }}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-bg: rgba(255, 255, 255, 0.95);
+        }
+        body { 
+            background: var(--bg-gradient); 
+            min-height: 100vh; 
+            font-family: 'Nunito', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+        }
+        .result-card {
+            background: var(--card-bg);
+            border-radius: 25px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 450px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        @media (max-width: 500px) {
+            .result-card { padding: 25px 15px; }
+            h2 { font-size: 1.5rem; }
+            .score-circle { width: 130px; height: 130px; }
+            .score-text { font-size: 3.5rem; }
+        }
+
+        .score-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            border: 8px solid #764ba2;
+            box-shadow: 0 0 20px rgba(118, 75, 162, 0.3);
+        }
+        .score-text {
+            font-size: 4rem;
+            font-weight: 900;
+            color: #764ba2;
+            line-height: 1;
+        }
+        .total-text {
+            font-size: 1.2rem;
+            color: #6c757d;
+            font-weight: 700;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px; height: 10px;
+            background-color: #f2d74e;
+            animation: fall linear forwards;
+        }
+        @keyframes fall { to { transform: translateY(100vh) rotate(720deg); } }
+
+        .btn-action {
+            border-radius: 50px;
+            padding: 14px;
+            font-size: 18px;
+            font-weight: 700;
+            transition: transform 0.2s;
+        }
+        .btn-action:active { transform: scale(0.95); }
+
+        .btn-share {
+            background: linear-gradient(45deg, #11998e, #38ef7d);
+            border: none;
+            color: white;
+        }
+        .btn-exit {
+            background: #efefef;
+            color: #333;
+            border: none;
+        }
+        .btn-exit:hover { background: #e0e0e0; }
+
+        #goodbye-screen {
+            display: none;
+            text-align: center;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="result-card" id="main-card">
+        {% if total > 0 %}
+            {% if (score / total) >= 0.8 %}
+                <h2 class="fw-bold text-success mb-3">🎉 Жарайсың!</h2>
+            {% elif (score / total) >= 0.5 %}
+                <h2 class="fw-bold text-warning mb-3">👌 Жақсы нәтиже!</h2>
+            {% else %}
+                <h2 class="fw-bold text-danger mb-3">😔 Келесіде сәттілік!</h2>
+            {% endif %}
+        {% else %}
+             <h2 class="fw-bold text-primary mb-3">🏁 Тест аяқталды!</h2>
+        {% endif %}
+
+        <div class="score-circle">
+            <div>
+                <div class="score-text">{{ score }}</div>
+                <div class="total-text">/ {{ total }}</div>
+            </div>
+        </div>
+
+        <h4 class="fw-bold text-dark mb-1">{{ student_name }}</h4>
+        <p class="text-muted small mb-4">Тест аяқталды</p>
+
+        <div class="d-grid gap-3">
+            <button onclick="shareResultNative()" class="btn btn-share btn-action shadow-sm">
+                <i class="fas fa-share-alt me-2"></i> Нәтижемен бөлісу
+            </button>
+
+            <button onclick="exitQuiz()" class="btn btn-exit btn-action shadow-sm">
+                <i class="fas fa-power-off me-2"></i> Шығу
+            </button>
+        </div>
+    </div>
+
+    <div id="goodbye-screen">
+        <i class="fas fa-check-circle fa-5x mb-4"></i>
+        <h2 class="fw-bold">Сау болыңыз!</h2>
+        <p class="lead">Тест аяқталды. Сіз бұл терезені жаба аласыз.</p>
+        <button onclick="window.close()" class="btn btn-outline-light mt-3 rounded-pill px-4">
+            Терезені жабу
+        </button>
+    </div>
+
+    <script>
+        // Конфетти (Егер нәтиже 50%-дан жоғары болса)
+        {% if total > 0 and (score / total) >= 0.5 %}
+            for(let i=0; i<50; i++) {
+                let c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = Math.random()*100 + '%';
+                c.style.animationDuration = (Math.random()*3+2)+'s';
+                c.style.backgroundColor = ['#ff0', '#f00', '#0f0', '#00f'][Math.floor(Math.random()*4)];
+                document.body.appendChild(c);
+            }
+        {% endif %}
+
+        // 1. БӨЛІСУ ФУНКЦИЯСЫ
+        async function shareResultNative() {
+            const shareData = {
+                title: 'ZQuiz Нәтижесі',
+                text: `👋 Менің ZQuiz нәтижем:\n👤 Оқушы: {{ student_name }}\n📊 Ұпай: {{ score }} / {{ total }}\n🚀 Керемет платформа!`,
+                url: window.location.origin // Басты бетке сілтеме
+            };
+
+            if (navigator.share) {
+                try {
+                    await navigator.share(shareData);
+                } catch (err) {
+                    console.log('Бөлісуден бас тартылды');
+                }
+            } else {
+                navigator.clipboard.writeText(shareData.text);
+                alert("Нәтиже көшірілді! Қалаған жеріңізге жібере аласыз.");
+            }
+        }
+
+        // 2. ШЫҒУ ФУНКЦИЯСЫ
+        function exitQuiz() {
+            document.getElementById('main-card').style.display = 'none';
+            document.getElementById('goodbye-screen').style.display = 'block';
+            
+            // Тарихты тазалау (артқа қайтпау үшін)
+            window.history.pushState(null, "", window.location.href);
+            window.onpopstate = function() {
+                window.history.pushState(null, "", window.location.href);
+            };
+
+            try {
+                window.close();
+            } catch(e) {
+                console.log("Автоматты жабылмады");
+            }
+        }
+    </script>
+</body>
+</html>
