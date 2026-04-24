@@ -11,23 +11,21 @@ from flask import Flask, render_template, request, jsonify, send_file, redirect,
 from openai import OpenAI
 from dotenv import load_dotenv
 
-# --- ЖАҢА КІТАПХАНАЛАР (FILE / URL / YOUTUBE / DOCX / PDF) ---
+# --- ЖАҢА КІТАПХАНАЛАР ---
 try:
     import qrcode
     from docx import Document
     from PyPDF2 import PdfReader
     from youtube_transcript_api import YouTubeTranscriptApi
     from bs4 import BeautifulSoup
-    # PDF жасауға арналған модульдер
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.pagesizes import letter
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
 except ImportError:
-    print("⚠️ Кейбір кітапханалар жоқ. Console-да орнатыңыз (pip install qrcode python-docx PyPDF2 youtube-transcript-api bs4 reportlab).")
+    print("⚠️ Кейбір кітапханалар жоқ.")
 
-# --- БАПТАУЛАР ---
 basedir = os.path.abspath(os.path.dirname(__file__))
 env_path = os.path.join(basedir, '.env')
 if os.path.exists(env_path):
@@ -38,7 +36,7 @@ api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 
 TEST_STORAGE = {}
-MAX_FILE_SIZE = 2 * 1024 * 1024  # 2 MB
+MAX_FILE_SIZE = 2 * 1024 * 1024  
 
 # --- КӨМЕКШІ ФУНКЦИЯЛАР ---
 
@@ -46,7 +44,6 @@ def extract_text_from_file(file):
     filename = file.filename.lower()
     content = ""
     
-    # 1. PDF
     if filename.endswith('.pdf'):
         reader = PdfReader(file)
         for page in reader.pages:
@@ -54,46 +51,48 @@ def extract_text_from_file(file):
             if extracted:
                 content += extracted + "\n"
         
-        # Егер PDF ішінен ешқандай мәтін шықпаса (мысалы, ол тек суреттерден тұрса)
         if not content.strip():
             raise ValueError("Бұл PDF файлдан мәтін табылмады (мүмкін ол сканерленген сурет). Басқа мәтіні бар құжат жүктеп көріңіз.")
             
-    # 2. WORD (.docx)
     elif filename.endswith('.docx'):
         doc = Document(file)
         for para in doc.paragraphs:
             content += para.text + "\n"
             
-    # 3. TXT
     elif filename.endswith('.txt'):
         content = file.read().decode('utf-8')
 
-    return content[:15000] # Тым ұзын болса қысқартамыз
+    return content[:15000]
 
 def get_youtube_transcript(url):
     try:
-        # YouTube ID-ін ақылды түрде алу
-        video_id = None
-        match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11}).*", url)
-        if match:
-            video_id = match.group(1)
+        # Улучшенный поиск ID видео (понимает любые ссылки, включая Shorts)
+        video_id_match = re.search(r"(?:v=|\/|youtu\.be\/|embed\/)([0-9A-Za-z_-]{11})", url)
+        if not video_id_match:
+            return None, "Сілтеме қате немесе YouTube видеосы емес."
         
-        if not video_id:
-            return None
+        video_id = video_id_match.group(1)
         
         try:
-            # 1-қадам: Негізгі тілдерді іздейміз
-            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['kk', 'ru', 'en'])
-        except:
-            # 2-қадам (План Б): Егер олар жоқ болса, бар субтитрлердің ең біріншісін күштеп аламыз
             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-            transcript = list(transcript_list)[0].fetch()
+        except Exception:
+            return None, "Бұл видеода ешқандай субтитр жоқ (тіпті автоматты түрде де)."
+
+        # Сначала ищем нужные языки
+        try:
+            transcript = transcript_list.find_transcript(['kk', 'ru', 'en']).fetch()
+        except:
+            # Если их нет, берем вообще ПЕРВЫЙ попавшийся язык (План Б)
+            try:
+                transcript = list(transcript_list)[0].fetch()
+            except:
+                return None, "Видеодан мәтін алу мүмкін болмады."
 
         text = " ".join([t['text'] for t in transcript])
-        return text[:15000]
+        return text[:15000], None
     except Exception as e:
         print(f"YouTube Error: {e}")
-        return None
+        return None, f"Қате шықты: {str(e)}"
 
 def get_url_content(url):
     try:
@@ -101,7 +100,6 @@ def get_url_content(url):
         resp = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(resp.content, 'html.parser')
         
-        # Тек параграфтарды аламыз
         paragraphs = soup.find_all('p')
         text = " ".join([p.get_text() for p in paragraphs])
         return text[:15000]
@@ -117,14 +115,14 @@ def index():
 @app.route('/generate_quiz', methods=['POST'])
 def generate_quiz():
     try:
-        if not api_key: return jsonify({"error": "API Key not found"}), 500
+        if not api_key: return jsonify({"error": "API Key табылмады"}), 500
 
         topic = request.form.get('topic', '')
         grade = request.form.get('grade', 'Any')
         language = request.form.get('language', 'Kazakh')
         quiz_type = request.form.get('type', 'Multiple Choice')
         input_type = request.form.get('free_input_type', 'text')
-        mode = request.form.get('mode', 'live')  # Өткізу режимі (Live немесе Homework)
+        mode = request.form.get('mode', 'live')  
         
         context_text = ""
         image_data = None 
@@ -143,7 +141,10 @@ def generate_quiz():
                     image_data = base64.b64encode(file.read()).decode('utf-8')
                     context_text = "Analyze this image and create a quiz based on it."
                 else:
-                    context_text = extract_text_from_file(file)
+                    try:
+                        context_text = extract_text_from_file(file)
+                    except Exception as e:
+                        return jsonify({"error": str(e)}), 400
 
         elif input_type == 'url':
             url_link = request.form.get('url_link')
@@ -157,11 +158,12 @@ def generate_quiz():
         elif input_type == 'youtube':
             yt_link = request.form.get('youtube_link')
             if yt_link:
-                transcript = get_youtube_transcript(yt_link)
+                # Используем новую логику с отловом ошибок
+                transcript, yt_error = get_youtube_transcript(yt_link)
+                if yt_error:
+                    return jsonify({"error": yt_error}), 400
                 if transcript:
                     context_text = f"Video Transcript: {transcript}"
-                else:
-                    return jsonify({"error": "Видеодан субтитр алынбады немесе бұл видеода мәтін жоқ."}), 400
         
         if not context_text:
             context_text = topic
@@ -205,7 +207,6 @@ def generate_quiz():
 
         quiz_json = json.loads(response.choices[0].message.content)
 
-        # Homework болса, статус бірден "started" болады
         room_status = "started" if mode == "homework" else "waiting"
 
         TEST_STORAGE[otp] = {
@@ -235,7 +236,6 @@ def qrcode_filter(data):
 def room(otp):
     test = TEST_STORAGE.get(otp)
     if not test: return "Not Found"
-    # Режимді HTML-ге береміз, оған қарап мұғалім бөлмесі бейімделеді
     mode = test.get('mode', 'live')
     return render_template('quiz_room.html', test=test, otp=otp, join_url=request.host_url+"join/"+otp, mode=mode)
 
@@ -244,15 +244,13 @@ def get_players(otp):
     test = TEST_STORAGE.get(otp)
     if not test: return jsonify({"error": "Not Found"}), 404
     
-    # Егер тест басталған болса немесе бітсе, ұпайларды жібереміз (Лидерборд үшін)
     if test['status'] != 'waiting':
         leaderboard = []
         for p in test['players']:
-            score = test['scores'].get(p, 0) # Егер әлі бітірмесе 0 болады
+            score = test['scores'].get(p, 0) 
             leaderboard.append({"name": p, "score": score})
         return jsonify({"players": leaderboard, "status": test['status']})
     
-    # Күту режимінде тек есімдерді жібереміз
     return jsonify({"players": test['players'], "status": test['status']})
 
 @app.route('/start_quiz/<otp>')
@@ -299,7 +297,6 @@ def download_file(otp, fmt):
     title = test['data'].get('title', 'ZQuiz')
     questions = test['data'].get('questions', [])
     
-    # 1. WORD ФАЙЛЫН ЖҮКТЕУ (DOCX)
     if fmt == 'docx':
         doc = Document()
         doc.add_heading(title, 0)
@@ -309,7 +306,7 @@ def download_file(otp, fmt):
             for opt in q.get('options', []):
                 doc.add_paragraph(opt, style='List Bullet')
             doc.add_paragraph(f"Дұрыс жауап: {q.get('answer', '')}")
-            doc.add_paragraph() # Бос жол
+            doc.add_paragraph() 
             
         file_stream = io.BytesIO()
         doc.save(file_stream)
@@ -322,27 +319,25 @@ def download_file(otp, fmt):
             mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
         
-    # 2. PDF ФАЙЛЫН ЖҮКТЕУ (PDF)
     elif fmt == 'pdf':
         
-        # PDF Қаріптерін (Кириллица) автоматты жүктеу
-        font_path = os.path.join(basedir, "DejaVuSans.ttf")
+        # Скачиваем шрифт во ВРЕМЕННУЮ папку (/tmp/), к которой у Render точно есть доступ
+        font_path = "/tmp/Roboto-Regular.ttf"
         if not os.path.exists(font_path):
             try:
-                urllib.request.urlretrieve("https://raw.githubusercontent.com/dejavu-fonts/dejavu-fonts/master/ttf/DejaVuSans.ttf", font_path)
+                urllib.request.urlretrieve("https://raw.githubusercontent.com/googlefonts/roboto/main/src/hinted/Roboto-Regular.ttf", font_path)
             except Exception as e:
                 print("Font download error:", e)
 
         file_stream = io.BytesIO()
         styles = getSampleStyleSheet()
         
-        # Қаріпті PDF-ке орнату
         try:
-            pdfmetrics.registerFont(TTFont('DejaVu', font_path))
+            pdfmetrics.registerFont(TTFont('Roboto', font_path))
             style_n = styles['Normal']
             style_h = styles['Heading1']
-            style_n.fontName = 'DejaVu'
-            style_h.fontName = 'DejaVu'
+            style_n.fontName = 'Roboto'
+            style_h.fontName = 'Roboto'
         except Exception as e:
             print("Could not register font:", e)
             style_n = styles['Normal']
